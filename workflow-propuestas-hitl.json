@@ -1,0 +1,454 @@
+{
+  "name": "Entrega Final - Pipeline Propuestas Comerciales (HITL)",
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "airtableTokenApi",
+        "baseId": {
+          "__rl": true,
+          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "mode": "id"
+        },
+        "tableId": {
+          "__rl": true,
+          "value": "Solicitudes",
+          "mode": "list"
+        },
+        "triggerField": "Ultima modificacion",
+        "additionalFields": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000001",
+      "name": "Disparador - Solicitud en Generando",
+      "type": "n8n-nodes-base.airtableTrigger",
+      "typeVersion": 1,
+      "position": [-160, 0],
+      "notes": "Poll Airtable. Se filtra por Estado en el siguiente nodo para no gastar operaciones de mas."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "cond-estado-generando",
+              "leftValue": "={{ $json.fields.Estado }}",
+              "rightValue": "Generando",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "cond-datos-presentes",
+              "leftValue": "={{ $json.fields['Datos del Cliente'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000002",
+      "name": "Filtro - Estado = Generando y Datos presentes",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [60, 0],
+      "notes": "Trigger inteligente: el flujo solo avanza si el estado es 'Generando' y hay datos. Evita bucles y ejecuciones vacias."
+    },
+    {
+      "parameters": {
+        "authentication": "airtableTokenApi",
+        "operation": "search",
+        "baseId": {
+          "__rl": true,
+          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "mode": "id"
+        },
+        "tableId": {
+          "__rl": true,
+          "value": "Base_Conocimiento",
+          "mode": "list"
+        },
+        "filterByFormula": "=OR({Categoria}='Voz de marca', {Sector}='{{ $json.fields.Sector }}', {Categoria}='Precios')",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000003",
+      "name": "RAG - Buscar Directrices Privadas",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [300, -80],
+      "notes": "RAG: recupera solo los registros atomicos relevantes (voz de marca, precios y el sector del cliente)."
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "fields.Contenido",
+              "renameField": true,
+              "outputFieldName": "directrices"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000004",
+      "name": "Consolidar Directrices",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [520, -80],
+      "notes": "Une los fragmentos RAG en una sola lista para pasarlos como contexto al modelo."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "asg-contexto",
+              "name": "contexto",
+              "value": "={{ $json.directrices.join('\\n\\n') }}",
+              "type": "string"
+            },
+            {
+              "id": "asg-datos",
+              "name": "datosCliente",
+              "value": "={{ $('Disparador - Solicitud en Generando').first().json.fields['Datos del Cliente'] }}",
+              "type": "string"
+            },
+            {
+              "id": "asg-sector",
+              "name": "sector",
+              "value": "={{ $('Disparador - Solicitud en Generando').first().json.fields.Sector }}",
+              "type": "string"
+            },
+            {
+              "id": "asg-email",
+              "name": "emailCliente",
+              "value": "={{ $('Disparador - Solicitud en Generando').first().json.fields['Email Cliente'] }}",
+              "type": "string"
+            },
+            {
+              "id": "asg-recordid",
+              "name": "recordId",
+              "value": "={{ $('Disparador - Solicitud en Generando').first().json.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000005",
+      "name": "Preparar Contexto",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [740, -80],
+      "notes": "Arma las variables dinamicas. Nada hardcodeado: todo sale de la DB y del RAG."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-sonnet-5\",\n  \"max_tokens\": 1024,\n  \"system\": \"Actua como el redactor comercial senior de nuestra empresa. Escribe SOLO con la voz, los datos y los precios aprobados que aparecen en las directrices. No inventes datos ni uses conocimiento externo. Devuelve una propuesta comercial estructurada: saludo, diagnostico, solucion propuesta, alcance, inversion y proximos pasos.\\n\\nDIRECTRICES PRIVADAS:\\n\" + $json.contexto,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Genera una propuesta comercial personalizada para este cliente del sector \" + $json.sector + \".\\n\\nDatos del cliente:\\n\" + $json.datosCliente\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000006",
+      "name": "IA - Generar Propuesta (Claude)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [980, -80],
+      "onError": "continueErrorOutput",
+      "notes": "Motor de IA. max_tokens limitado a 1024 para optimizar costos. La respuesta se mapea desde content[0].text. Si la API falla, sale por la rama de error."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "asg-propuesta",
+              "name": "propuesta",
+              "value": "={{ $json.content[0].text }}",
+              "type": "string"
+            },
+            {
+              "id": "asg-recordid2",
+              "name": "recordId",
+              "value": "={{ $('Preparar Contexto').first().json.recordId }}",
+              "type": "string"
+            },
+            {
+              "id": "asg-email2",
+              "name": "emailCliente",
+              "value": "={{ $('Preparar Contexto').first().json.emailCliente }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000007",
+      "name": "Extraer Texto de Propuesta",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1200, -80],
+      "notes": "Mapeo de la variable de respuesta del LLM (Message.Content -> content[0].text)."
+    },
+    {
+      "parameters": {
+        "authentication": "airtableTokenApi",
+        "operation": "update",
+        "baseId": {
+          "__rl": true,
+          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "mode": "id"
+        },
+        "tableId": {
+          "__rl": true,
+          "value": "Solicitudes",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.recordId }}",
+            "Borrador Propuesta": "={{ $json.propuesta }}",
+            "Estado": "Revision pendiente",
+            "Aprobado": false
+          }
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000008",
+      "name": "Guardar Borrador + Estado Revision",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [1420, -80],
+      "notes": "Escribe el borrador en la DB, deja Aprobado en false y pasa a 'Revision pendiente'. Aqui empieza el HITL."
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $env.EMAIL_REVISOR }}",
+        "subject": "=Propuesta lista para revisar - {{ $('Preparar Contexto').first().json.sector }}",
+        "emailType": "text",
+        "message": "=Hay una propuesta generada por IA esperando tu aprobacion.\n\nRevisa el borrador y marca el checkbox 'Aprobado' en Airtable para autorizar el envio al cliente:\nhttps://airtable.com/{{ $env.AIRTABLE_BASE_ID }}/Solicitudes/{{ $json.recordId }}\n\n--- Extracto ---\n{{ $json.propuesta.substring(0, 400) }}...",
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000009",
+      "name": "HITL - Notificar Revisor (Gmail)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1640, -80],
+      "notes": "Punto de pausa humano. El flujo NO publica: solo avisa al revisor con el enlace para aprobar."
+    },
+    {
+      "parameters": {
+        "authentication": "airtableTokenApi",
+        "operation": "update",
+        "baseId": {
+          "__rl": true,
+          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "mode": "id"
+        },
+        "tableId": {
+          "__rl": true,
+          "value": "Solicitudes",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Preparar Contexto').first().json.recordId }}",
+            "Estado": "Error",
+            "Log Error": "={{ $json.error?.message || JSON.stringify($json.error) || 'Fallo en la llamada a la API de IA' }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000010",
+      "name": "Registrar Error IA",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [1200, 140],
+      "notes": "Ruta de error (Resume): si la IA falla, guarda el error en la DB y estabiliza el flujo en vez de romperse."
+    },
+    {
+      "parameters": {
+        "authentication": "airtableTokenApi",
+        "baseId": {
+          "__rl": true,
+          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "mode": "id"
+        },
+        "tableId": {
+          "__rl": true,
+          "value": "Solicitudes",
+          "mode": "list"
+        },
+        "triggerField": "Ultima modificacion",
+        "additionalFields": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000011",
+      "name": "Disparador - Propuesta Aprobada",
+      "type": "n8n-nodes-base.airtableTrigger",
+      "typeVersion": 1,
+      "position": [-160, 420],
+      "notes": "Segundo trigger: reacciona cuando el revisor edita la fila (marca Aprobado)."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "cond-aprobado-true",
+              "leftValue": "={{ $json.fields.Aprobado }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "cond-estado-aprobado",
+              "leftValue": "={{ $json.fields.Estado }}",
+              "rightValue": "Revision pendiente",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000012",
+      "name": "Filtro - Aprobado == true (booleano)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [60, 420],
+      "notes": "Comparacion de tipos correcta: boolean vs boolean. Nada avanza al cliente sin Aprobado=true. Evita bucle: exige Estado='Revision pendiente'."
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.fields['Email Cliente'] }}",
+        "subject": "=Propuesta comercial personalizada",
+        "emailType": "text",
+        "message": "={{ $json.fields['Borrador Propuesta'] }}",
+        "options": {
+          "threadId": "={{ $json.fields['Gmail Thread ID'] }}"
+        }
+      },
+      "id": "a1000000-0000-4000-8000-000000000013",
+      "name": "Enviar Propuesta al Cliente (Gmail)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [300, 420],
+      "notes": "Salida final. Mapea Thread ID para mantener la conversacion organizada. Solo corre tras la aprobacion humana."
+    },
+    {
+      "parameters": {
+        "authentication": "airtableTokenApi",
+        "operation": "update",
+        "baseId": {
+          "__rl": true,
+          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "mode": "id"
+        },
+        "tableId": {
+          "__rl": true,
+          "value": "Solicitudes",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Disparador - Propuesta Aprobada').first().json.id }}",
+            "Estado": "Enviado",
+            "Gmail Thread ID": "={{ $json.threadId }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "a1000000-0000-4000-8000-000000000014",
+      "name": "Actualizar Estado = Enviado",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [540, 420],
+      "notes": "Cierra el ciclo. Al pasar a 'Enviado' la fila deja de cumplir el filtro -> no re-dispara (anti bucle infinito)."
+    }
+  ],
+  "connections": {
+    "Disparador - Solicitud en Generando": {
+      "main": [[{ "node": "Filtro - Estado = Generando y Datos presentes", "type": "main", "index": 0 }]]
+    },
+    "Filtro - Estado = Generando y Datos presentes": {
+      "main": [[{ "node": "RAG - Buscar Directrices Privadas", "type": "main", "index": 0 }], []]
+    },
+    "RAG - Buscar Directrices Privadas": {
+      "main": [[{ "node": "Consolidar Directrices", "type": "main", "index": 0 }]]
+    },
+    "Consolidar Directrices": {
+      "main": [[{ "node": "Preparar Contexto", "type": "main", "index": 0 }]]
+    },
+    "Preparar Contexto": {
+      "main": [[{ "node": "IA - Generar Propuesta (Claude)", "type": "main", "index": 0 }]]
+    },
+    "IA - Generar Propuesta (Claude)": {
+      "main": [
+        [{ "node": "Extraer Texto de Propuesta", "type": "main", "index": 0 }],
+        [{ "node": "Registrar Error IA", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extraer Texto de Propuesta": {
+      "main": [[{ "node": "Guardar Borrador + Estado Revision", "type": "main", "index": 0 }]]
+    },
+    "Guardar Borrador + Estado Revision": {
+      "main": [[{ "node": "HITL - Notificar Revisor (Gmail)", "type": "main", "index": 0 }]]
+    },
+    "Disparador - Propuesta Aprobada": {
+      "main": [[{ "node": "Filtro - Aprobado == true (booleano)", "type": "main", "index": 0 }]]
+    },
+    "Filtro - Aprobado == true (booleano)": {
+      "main": [[{ "node": "Enviar Propuesta al Cliente (Gmail)", "type": "main", "index": 0 }], []]
+    },
+    "Enviar Propuesta al Cliente (Gmail)": {
+      "main": [[{ "node": "Actualizar Estado = Enviado", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
