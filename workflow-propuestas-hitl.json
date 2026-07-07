@@ -155,16 +155,12 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.anthropic.com/v1/messages",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "anthropic-version",
-              "value": "2023-06-01"
-            },
             {
               "name": "content-type",
               "value": "application/json"
@@ -173,16 +169,16 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"claude-sonnet-5\",\n  \"max_tokens\": 1024,\n  \"system\": \"Actua como el redactor comercial senior de nuestra empresa. Escribe SOLO con la voz, los datos y los precios aprobados que aparecen en las directrices. No inventes datos ni uses conocimiento externo. Devuelve una propuesta comercial estructurada: saludo, diagnostico, solucion propuesta, alcance, inversion y proximos pasos.\\n\\nDIRECTRICES PRIVADAS:\\n\" + $json.contexto,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Genera una propuesta comercial personalizada para este cliente del sector \" + $json.sector + \".\\n\\nDatos del cliente:\\n\" + $json.datosCliente\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"system_instruction\": {\n    \"parts\": [ { \"text\": \"Actua como el redactor comercial senior de nuestra empresa. Escribe SOLO con la voz, los datos y los precios aprobados que aparecen en las directrices. No inventes datos ni uses conocimiento externo. Devuelve una propuesta comercial estructurada: saludo, diagnostico, solucion propuesta, alcance, inversion y proximos pasos.\\n\\nDIRECTRICES PRIVADAS:\\n\" + $json.contexto } ]\n  },\n  \"contents\": [\n    { \"role\": \"user\", \"parts\": [ { \"text\": \"Genera una propuesta comercial personalizada para este cliente del sector \" + $json.sector + \".\\n\\nDatos del cliente:\\n\" + $json.datosCliente } ] }\n  ],\n  \"generationConfig\": { \"maxOutputTokens\": 1024 }\n}",
         "options": {}
       },
       "id": "a1000000-0000-4000-8000-000000000006",
-      "name": "IA - Generar Propuesta (Claude)",
+      "name": "IA - Generar Propuesta (Gemini)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [980, -80],
       "onError": "continueErrorOutput",
-      "notes": "Motor de IA. max_tokens limitado a 1024 para optimizar costos. La respuesta se mapea desde content[0].text. Si la API falla, sale por la rama de error."
+      "notes": "Motor de IA (Gemini, tier gratis). maxOutputTokens 1024. Respuesta mapeada desde candidates[0].content.parts[0].text. Credencial Header Auth con Nombre x-goog-api-key. Si la API falla, sale por la rama de error."
     },
     {
       "parameters": {
@@ -191,7 +187,7 @@
             {
               "id": "asg-propuesta",
               "name": "propuesta",
-              "value": "={{ $json.content[0].text }}",
+              "value": "={{ $json.candidates[0].content.parts[0].text }}",
               "type": "string"
             },
             {
@@ -420,9 +416,9 @@
       "main": [[{ "node": "Preparar Contexto", "type": "main", "index": 0 }]]
     },
     "Preparar Contexto": {
-      "main": [[{ "node": "IA - Generar Propuesta (Claude)", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "IA - Generar Propuesta (Gemini)", "type": "main", "index": 0 }]]
     },
-    "IA - Generar Propuesta (Claude)": {
+    "IA - Generar Propuesta (Gemini)": {
       "main": [
         [{ "node": "Extraer Texto de Propuesta", "type": "main", "index": 0 }],
         [{ "node": "Registrar Error IA", "type": "main", "index": 0 }]

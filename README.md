@@ -10,7 +10,7 @@ con IA a partir de una base de conocimientos privada (RAG), con un punto de vali
 |-----|-----------|
 | Orquestador | **n8n** |
 | Base de datos / memoria | **Airtable** |
-| Procesamiento IA | **Anthropic Claude** (`claude-sonnet-5`) con RAG |
+| Procesamiento IA | **Google Gemini** (`gemini-2.0-flash`, tier gratis) con RAG |
 | Canal de salida | **Gmail** |
 | Notificación HITL | **Gmail** (al revisor) |
 
@@ -68,7 +68,7 @@ prospecto en Airtable y marca la fila como *Generando*. El sistema:
 1. En n8n: **Workflows → Import from File →** `workflow-propuestas-hitl.json`.
 2. Configurar credenciales:
    - **Airtable Personal Access Token** (nodos Airtable + triggers).
-   - **Header Auth** para la API de Anthropic: header `x-api-key` = tu API key de Claude.
+   - **Header Auth** para la API de Gemini: header `x-goog-api-key` = tu API key de Google AI Studio.
    - **Gmail OAuth2**.
 3. Definir variables de entorno en n8n:
    - `AIRTABLE_BASE_ID` = id de tu base.
