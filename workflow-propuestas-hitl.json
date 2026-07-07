@@ -6,12 +6,12 @@
         "authentication": "airtableTokenApi",
         "baseId": {
           "__rl": true,
-          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "value": "app7ClffAV18gZulm",
           "mode": "id"
         },
         "tableId": {
           "__rl": true,
-          "value": "Solicitudes",
+          "value": "tbluu65vfvwesKYiB",
           "mode": "list"
         },
         "triggerField": "Ultima modificacion",
@@ -69,12 +69,12 @@
         "operation": "search",
         "baseId": {
           "__rl": true,
-          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "value": "app7ClffAV18gZulm",
           "mode": "id"
         },
         "tableId": {
           "__rl": true,
-          "value": "Base_Conocimiento",
+          "value": "tblcQ3njQhPEEGxkH",
           "mode": "list"
         },
         "filterByFormula": "=OR({Categoria}='Voz de marca', {Sector}='{{ $json.fields.Sector }}', {Categoria}='Precios')",
@@ -219,12 +219,12 @@
         "operation": "update",
         "baseId": {
           "__rl": true,
-          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "value": "app7ClffAV18gZulm",
           "mode": "id"
         },
         "tableId": {
           "__rl": true,
-          "value": "Solicitudes",
+          "value": "tbluu65vfvwesKYiB",
           "mode": "list"
         },
         "columns": {
@@ -247,10 +247,10 @@
     },
     {
       "parameters": {
-        "sendTo": "={{ $env.EMAIL_REVISOR }}",
+        "sendTo": "francopasqua145@gmail.com",
         "subject": "=Propuesta lista para revisar - {{ $('Preparar Contexto').first().json.sector }}",
         "emailType": "text",
-        "message": "=Hay una propuesta generada por IA esperando tu aprobacion.\n\nRevisa el borrador y marca el checkbox 'Aprobado' en Airtable para autorizar el envio al cliente:\nhttps://airtable.com/{{ $env.AIRTABLE_BASE_ID }}/Solicitudes/{{ $json.recordId }}\n\n--- Extracto ---\n{{ $json.propuesta.substring(0, 400) }}...",
+        "message": "=Hay una propuesta generada por IA esperando tu aprobacion.\n\nRevisa el borrador y marca el checkbox 'Aprobado' en Airtable para autorizar el envio al cliente:\nhttps://airtable.com/app7ClffAV18gZulm/Solicitudes/{{ $json.recordId }}\n\n--- Extracto ---\n{{ $json.propuesta.substring(0, 400) }}...",
         "options": {}
       },
       "id": "a1000000-0000-4000-8000-000000000009",
@@ -266,12 +266,12 @@
         "operation": "update",
         "baseId": {
           "__rl": true,
-          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "value": "app7ClffAV18gZulm",
           "mode": "id"
         },
         "tableId": {
           "__rl": true,
-          "value": "Solicitudes",
+          "value": "tbluu65vfvwesKYiB",
           "mode": "list"
         },
         "columns": {
@@ -296,12 +296,12 @@
         "authentication": "airtableTokenApi",
         "baseId": {
           "__rl": true,
-          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "value": "app7ClffAV18gZulm",
           "mode": "id"
         },
         "tableId": {
           "__rl": true,
-          "value": "Solicitudes",
+          "value": "tbluu65vfvwesKYiB",
           "mode": "list"
         },
         "triggerField": "Ultima modificacion",
@@ -376,12 +376,12 @@
         "operation": "update",
         "baseId": {
           "__rl": true,
-          "value": "={{ $env.AIRTABLE_BASE_ID }}",
+          "value": "app7ClffAV18gZulm",
           "mode": "id"
         },
         "tableId": {
           "__rl": true,
-          "value": "Solicitudes",
+          "value": "tbluu65vfvwesKYiB",
           "mode": "list"
         },
         "columns": {
