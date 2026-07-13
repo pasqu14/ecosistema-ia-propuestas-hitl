@@ -82,8 +82,8 @@ prospecto en Airtable y marca la fila como *Generando*. El sistema:
 - `airtable-schema.md` — estructura de la base de datos (tablas, campos, relaciones).
 - `docs/diagrama-arquitectura.pdf` — diagrama y documentación de arquitectura.
 - `docs/screenshots/` — capturas de evidencia (trigger, ejecución, HITL, camino infeliz, envío).
-- Link a la base Airtable en modo lectura: _(pegar aquí)_
-- Video demo (3 min): _(pegar aquí)_
+- Link a la base Airtable en modo lectura: https://airtable.com/app7ClffAV18gZulm/shrAnAVLzsYZYhDEr
+- Video demo (3 min): _(pegar el link del video acá)_
 
 ## Test de estrés (mínimo 5 ejecuciones)
 
