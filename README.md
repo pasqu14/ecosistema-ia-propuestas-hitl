@@ -83,7 +83,7 @@ prospecto en Airtable y marca la fila como *Generando*. El sistema:
 - `docs/diagrama-arquitectura.pdf` — diagrama y documentación de arquitectura.
 - `docs/screenshots/` — capturas de evidencia (trigger, ejecución, HITL, camino infeliz, envío).
 - Link a la base Airtable en modo lectura: https://airtable.com/app7ClffAV18gZulm/shrAnAVLzsYZYhDEr
-- Video demo (3 min): _(pegar el link del video acá)_
+- Video demo (3 min): https://drive.google.com/file/d/1beKPOP3mjqce2yXxBaxP7z-iNay2zqpE/view?usp=sharing
 
 ## Test de estrés (mínimo 5 ejecuciones)
 
